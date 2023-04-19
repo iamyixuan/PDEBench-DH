@@ -15,7 +15,7 @@ setup(
                         'omegaconf',
                         'deepxde'
                         ],
-    packages=['pdebench'],
+    packages=setuptools.find_packages(),
     author='Makoto Takamoto, Timothy Praditia, Raphael Leiteritz, Dan MacKinlay, Francesco Alesiani, Dirk Pflüger, Mathias Niepert',
     author_email='Makoto.Takamoto@neclab.eu, timothy.praditia@iws.uni-stuttgart.de',
     url='https://github.com/pdebench/PDEBench',
