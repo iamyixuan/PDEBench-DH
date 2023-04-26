@@ -34,7 +34,7 @@ from pdebench.models.pinn.pde_definitions import (
 from pdebench.models.metrics import metrics, metric_func
 
 
-def setup_diffusion_sorption(filename, seed):
+def setup_diffusion_sorption(filename, config, seed):
     # TODO: read from dataset config file
     geom = dde.geometry.Interval(0, 1)
     timedomain = dde.geometry.TimeDomain(0, 500.0)
@@ -82,7 +82,7 @@ def setup_diffusion_sorption(filename, seed):
         num_boundary=1000,
         num_initial=5000,
     )
-    net = dde.nn.FNN([2] + [40] * 6 + [1], "tanh", "Glorot normal")
+    net = dde.nn.FNN([2] + [config['num_neurons']] * config['num_layers'] + [1], config['activation'], "Glorot normal")
 
     def transform_output(x, y):
         return torch.relu(y)
@@ -93,7 +93,13 @@ def setup_diffusion_sorption(filename, seed):
 
     return model, dataset
 
-def setup_diffusion_reaction(filename, seed):
+def setup_diffusion_reaction(net_class, filename, config, seed):
+    '''
+    args:
+        net: neural network class.
+        filename: dataset filename.
+        seed: random seed.
+    '''
     # TODO: read from dataset config file
     geom = dde.geometry.Rectangle((-1, -1), (1, 1))
     timedomain = dde.geometry.TimeDomain(0, 5.0)
@@ -112,7 +118,7 @@ def setup_diffusion_reaction(filename, seed):
     data_split, _ = torch.utils.data.random_split(
         dataset,
         [ratio, len(dataset) - ratio],
-        generator=torch.Generator(device="cuda").manual_seed(42),
+        generator=torch.Generator().manual_seed(42),
     )
 
     data_gt = data_split[:]
@@ -127,14 +133,16 @@ def setup_diffusion_reaction(filename, seed):
         num_domain=1000,
         num_boundary=1000,
         num_initial=5000,
+        num_test=500 # enable number of test for validation purpose
     )
-    net = dde.nn.FNN([3] + [40] * 6 + [2], "tanh", "Glorot normal")
+    net = net_class([3] + [config['num_neurons']] * config['num_layers'] + [2], config['activation'], "Glorot normal")
+    # net = dde.nn.FNN([3] + [config['num_neurons']] * config['num_layers'] + [2], config['activation'], "Glorot normal")
     model = dde.Model(data, net)
 
     return model, dataset
 
 
-def setup_swe_2d(filename, seed) -> Tuple[dde.Model, PINNDataset2D]:
+def setup_swe_2d(filename, config, seed) -> Tuple[dde.Model, PINNDataset2D]:
 
     dataset = PINNDatasetRadialDambreak(filename, seed)
 
@@ -177,7 +185,7 @@ def setup_swe_2d(filename, seed) -> Tuple[dde.Model, PINNDataset2D]:
         num_boundary=1000,
         num_initial=5000,
     )
-    net = dde.nn.FNN([3] + [40] * 6 + [3], "tanh", "Glorot normal")
+    net = dde.nn.FNN([3] + [config['num_neurons']] * config['num_layers'] + [3], config['activation'], "Glorot normal")
     model = dde.Model(data, net)
 
     return model, dataset
@@ -347,19 +355,19 @@ def setup_CFD3D(filename="3D_CFD_RAND_Eta1.e-8_Zeta1.e-8_periodic_Train.hdf5",
 
     return model, dataset
 
-def _run_training(scenario, epochs, learning_rate, model_update, flnm,
+def _run_training(net_class, scenario, epochs, learning_rate, model_update, flnm,
                   input_ch, output_ch,
                   root_path, val_batch_idx, if_periodic_bc, aux_params,
-                  if_single_run,
-                  seed):
+                  if_single_run, config,
+                  seed, callbacks=None):
     if scenario == "swe2d":
-        model, dataset = setup_swe_2d(filename=flnm, seed=seed)
+        model, dataset = setup_swe_2d(filename=flnm, config=config, seed=seed)
         n_components = 1
     elif scenario == "diff-react":
-        model, dataset = setup_diffusion_reaction(filename=flnm, seed=seed)
+        model, dataset = setup_diffusion_reaction(net_class, filename=flnm, config=config, seed=seed)
         n_components = 2
     elif scenario == "diff-sorp":
-        model, dataset = setup_diffusion_sorption(filename=flnm, seed=seed)
+        model, dataset = setup_diffusion_sorption(filename=flnm, config=config, seed=seed)
         n_components = 1
     elif scenario == "pde1D":
         model, dataset = setup_pde1D(filename=flnm,
@@ -387,7 +395,8 @@ def _run_training(scenario, epochs, learning_rate, model_update, flnm,
                                      input_ch=input_ch,
                                      output_ch=output_ch,
                                      val_batch_idx=val_batch_idx,
-                                     aux_params=aux_params)
+                                     aux_params=aux_params,
+                                     )
         n_components = 5
     else:
         raise NotImplementedError(f"PINN training not implemented for {scenario}")
@@ -398,88 +407,75 @@ def _run_training(scenario, epochs, learning_rate, model_update, flnm,
     else:
         model_name = flnm[:-5] + "_PINN"
 
-    checker = dde.callbacks.ModelCheckpoint(
-        f"{model_name}.pt", save_better_only=True, period=5000
-    )
+    # checker = dde.callbacks.ModelCheckpoint(
+    #     f"{model_name}.pt", save_better_only=True, period=5000
+    # )
 
     model.compile("adam", lr=learning_rate)
     losshistory, train_state = model.train(
-        epochs=epochs, display_every=model_update, callbacks=[checker]
+        iterations=epochs, display_every=model_update, callbacks=[callbacks]
     )
+    train_loss = train_state.loss_train
+    val_loss = train_state.loss_test
+
 
     test_input, test_gt = dataset.get_test_data(
         n_last_time_steps=20, n_components=n_components
     )
+    # Use the first 50% for validation and last for testing
+
     # select only n_components of output
     # dirty hack for swe2d where we predict more components than we have data on
     test_pred = torch.tensor(model.predict(test_input.cpu())[:, :n_components])
+    # val_pred = torch.tensor(model.predict(val_input.cpu())[:, :n_components])
 
-    # prepare data for metrics eval
     test_pred = dataset.unravel_tensor(
+    # prepare data for metrics eval
         test_pred, n_last_time_steps=20, n_components=n_components
     )
     test_gt = dataset.unravel_tensor(
         test_gt, n_last_time_steps=20, n_components=n_components
     )
 
-    if if_single_run:
-        errs = metric_func(test_pred, test_gt)
-        errors = [np.array(err.cpu()) for err in errs]
-        print(errors)
-        pickle.dump(errors, open(model_name + ".pickle", "wb"))
 
-        # plot sample
-        plot_input = dataset.generate_plot_input(time=1.0)
-        if scenario == "pde1D":
-            xdim = dataset.xdim
-            dim = 1
-        else:
-            dim = dataset.config["plot"]["dim"]
-            xdim = dataset.config["sim"]["xdim"]
-            if dim == 2:
-                ydim = dataset.config["sim"]["ydim"]
+    return val_loss, test_pred, test_gt, model_name
 
-        y_pred = model.predict(plot_input)[:, 0]
-        if dim == 1:
-            plt.figure()
-            plt.plot(y_pred)
-        elif dim == 2:
-            im_data = y_pred.reshape(xdim, ydim)
-            plt.figure()
-            plt.imshow(im_data)
-
-        plt.savefig(f"{model_name}.png")
-
-        # TODO: implement function to get specific timestep from dataset
-        # y_true = dataset[:][1][-xdim * ydim :]
-    else:
-        return test_pred, test_gt, model_name
-
-def run_training(scenario, epochs, learning_rate, model_update, flnm,
+def run_training(net_class, scenario, epochs, learning_rate, model_update, flnm, config,
                  input_ch=1, output_ch=1,
-                 root_path='../data/', val_num=10, if_periodic_bc=True, aux_params=[None], seed='0000'):
+                 root_path='../data/', val_num=1, if_periodic_bc=True, aux_params=[None], seed='0000', callbacks=None):
 
     if val_num == 1:  # single job
-        _run_training(scenario, epochs, learning_rate, model_update, flnm,
+        val_loss,  test_pred, test_gt, model_name = _run_training(net_class, scenario, epochs, learning_rate, model_update, flnm,
                       input_ch, output_ch,
                       root_path, -val_num, if_periodic_bc, aux_params,
-                      if_single_run=True, seed=seed)
+                      if_single_run=True, config=config, seed=seed, callbacks=callbacks)
+        # val_errs = metric_func(val_pred, val_gt)
+        test_errs = metric_func(test_pred, test_gt)
     else:
         for val_batch_idx in range(-1, -val_num, -1):
-            test_pred, test_gt, model_name = _run_training(scenario, epochs, learning_rate, model_update, flnm,
+            val_loss,  test_pred, test_gt, model_name = _run_training(scenario, epochs, learning_rate, model_update, flnm,
                                                            input_ch, output_ch,
                                                            root_path, val_batch_idx, if_periodic_bc, aux_params,
-                                                           if_single_run=False, seed=seed)
+                                                           if_single_run=False, config=config, seed=seed, callbacks=callbacks)
             if val_batch_idx == -1:
                 pred, target = test_pred.unsqueeze(0), test_gt.unsqueeze(0)
+                # pred_v, target_v = val_pred.unsqueeze(0), val_gt.unsqueeze(0)
             else:
                 pred = torch.cat([pred, test_pred.unsqueeze(0)], 0)
                 target = torch.cat([target, test_gt.unsqueeze(0)], 0)
 
-        errs = metric_func(test_pred, test_gt)
-        errors = [np.array(err.cpu()) for err in errs]
-        print(errors)
-        pickle.dump(errors, open(model_name + ".pickle", "wb"))
+                # pred_v = torch.cat([pred_v, val_pred.unsqueeze(0)], 0)
+                # target_v = torch.cat([target_v, val_gt.unsqueeze(0)], 0)
+
+        # val_errs = metric_func(val_pred, val_gt)
+
+        test_errs = metric_func(test_pred, test_gt)
+
+
+        # errors = [np.array(err.cpu()) for err in errs]
+        # print(errors)
+        # pickle.dump(errors, open(model_name + ".pickle", "wb"))
+    return val_loss, test_errs[0].detach().numpy()
 
 
 if __name__ == "__main__":
@@ -497,6 +493,7 @@ if __name__ == "__main__":
         learning_rate=1e-3,
         model_update=500,
         flnm="2D_diff-react_NA_NA.h5",
+        config=None,
         seed="0000",
     )
     # run_training(

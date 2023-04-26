@@ -186,7 +186,27 @@ class PINNDataset2D(Dataset):
         test_input_y = self.data_input[:, 1].reshape((n_x, n_y, n_t))
         test_input_t = self.data_input[:, 2].reshape((n_x, n_y, n_t))
         test_output = self.data_output.reshape((n_x, n_y, n_t, n_components))
+        #prepare val data
+        val_input_x = test_input_x[:, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_y = test_input_y[:, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_t = test_input_t[:, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_output = test_output[:, :, -2*n_last_time_steps:-n_last_time_steps, :]
 
+        val_input = torch.vstack(
+            [val_input_x.ravel(), val_input_y.ravel(),  val_input_t.ravel()]
+        ).T
+
+        # stack depending on number of output components
+        val_output_stacked = val_output[..., 0].ravel()
+        if n_components > 1:
+            for i in range(1, n_components):
+                val_output_stacked = torch.vstack(
+                    [val_output_stacked, val_output[..., i].ravel()]
+                )
+        else:
+            val_output_stacked = val_output_stacked.unsqueeze(1)
+
+        val_output = val_output_stacked.T
         # extract last n time steps
         test_input_x = test_input_x[:, :, -n_last_time_steps:]
         test_input_y = test_input_y[:, :, -n_last_time_steps:]
@@ -527,6 +547,28 @@ class PINNDataset2Dpde(Dataset):
         test_input_t = self.data_input[:, 4].reshape((n_x, n_y, n_t))
         test_output = self.data_output.reshape((n_x, n_y, n_t, n_components))
 
+        #prepare val data
+        val_input_x = test_input_x[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_y = test_input_y[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_t = test_input_t[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_output = test_output[:, :, :, -2*n_last_time_steps:-n_last_time_steps, :]
+
+        val_input = torch.vstack(
+            [val_input_x.ravel(), val_input_y.ravel(),  val_input_t.ravel()]
+        ).T
+
+        # stack depending on number of output components
+        val_output_stacked = val_output[..., 0].ravel()
+        if n_components > 1:
+            for i in range(1, n_components):
+                val_output_stacked = torch.vstack(
+                    [val_output_stacked, val_output[..., i].ravel()]
+                )
+        else:
+            val_output_stacked = val_output_stacked.unsqueeze(1)
+
+        val_output = val_output_stacked.T
+
         # extract last n time steps
         test_input_x = test_input_x[:, :, -n_last_time_steps:]
         test_input_y = test_input_y[:, :, -n_last_time_steps:]
@@ -549,7 +591,7 @@ class PINNDataset2Dpde(Dataset):
 
         test_output = test_output_stacked.T
 
-        return test_input, test_output
+        return val_input, val_output, test_input, test_output
 
     def unravel_tensor(self, raveled_tensor, n_last_time_steps, n_components=1):
         n_x = len(self.data_grid_x)
@@ -663,6 +705,29 @@ class PINNDataset3Dpde(Dataset):
         test_input_t = self.data_input[:, 3].reshape((n_x, n_y, n_z, n_t))
         test_output = self.data_output.reshape((n_x, n_y, n_z, n_t, n_components))
 
+        #prepare val data
+        val_input_x = test_input_x[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_y = test_input_y[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_z = test_input_z[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_input_t = test_input_t[:, :, :, -2*n_last_time_steps:-n_last_time_steps]
+        val_output = test_output[:, :, :, -2*n_last_time_steps:-n_last_time_steps, :]
+
+        val_input = torch.vstack(
+            [val_input_x.ravel(), val_input_y.ravel(), val_input_z.ravel(), val_input_t.ravel()]
+        ).T
+
+        # stack depending on number of output components
+        val_output_stacked = val_output[..., 0].ravel()
+        if n_components > 1:
+            for i in range(1, n_components):
+                val_output_stacked = torch.vstack(
+                    [val_output_stacked, val_output[..., i].ravel()]
+                )
+        else:
+            val_output_stacked = val_output_stacked.unsqueeze(1)
+
+        val_output = val_output_stacked.T
+
         # extract last n time steps
         test_input_x = test_input_x[:, :, :, -n_last_time_steps:]
         test_input_y = test_input_y[:, :, :, -n_last_time_steps:]
@@ -686,7 +751,7 @@ class PINNDataset3Dpde(Dataset):
 
         test_output = test_output_stacked.T
 
-        return test_input, test_output
+        return val_input, val_output, test_input, test_output
 
     def unravel_tensor(self, raveled_tensor, n_last_time_steps, n_components=1):
         n_x = len(self.data_grid_x)
