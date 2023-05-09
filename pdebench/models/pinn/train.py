@@ -602,7 +602,7 @@ def run_training(
         # errors = [np.array(err.cpu()) for err in errs]
         # print(errors)
         # pickle.dump(errors, open(model_name + ".pickle", "wb"))
-    return val_loss, test_errs[0].detach().numpy()
+    return val_loss, test_errs[0].cpu().detach().numpy()
 
 
 if __name__ == "__main__":
