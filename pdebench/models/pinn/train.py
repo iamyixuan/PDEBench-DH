@@ -123,7 +123,7 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     data_split, _ = torch.utils.data.random_split(
         dataset,
         [ratio, len(dataset) - ratio],
-        generator=torch.Generator().manual_seed(42),
+        generator=torch.Generator(device='cuda').manual_seed(42),
     )
 
     data_gt = data_split[:]
