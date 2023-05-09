@@ -119,7 +119,7 @@ class PINNDataset2D(Dataset):
         self.seed = seed
 
         # load data file
-        root_path = os.path.abspath("./build/PDEBench-DH/pdebench/data/")
+        root_path = os.path.abspath("./build/PDEBench-DH/pdebench/data/2D_diff-react_NA_NA/")
         data_path = os.path.join(root_path, filename)
         with h5py.File(data_path, "r") as h5_file:
             seed_group = h5_file[seed]
