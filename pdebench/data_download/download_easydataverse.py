@@ -10,6 +10,7 @@ from easyDataverse import Dataset
 
 log = logging.getLogger(__name__)
 
+
 @hydra.main(config_path="config/", config_name="config")
 def main(config: DictConfig):
     """
@@ -40,14 +41,13 @@ def main(config: DictConfig):
             files.append(file["dataFile"]["filename"])
 
     # Download the files
-    
+
     dataset = Dataset.from_dataverse_doi(
         doi=config.args.dataset_id,
         dataverse_url=config.args.dataverse_url,
         filenames=files,
         filedir=config.args.data_folder,
     )
-
 
 
 if __name__ == "__main__":

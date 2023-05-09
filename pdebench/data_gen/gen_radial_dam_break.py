@@ -38,8 +38,7 @@ log = logging.getLogger(__name__)
 
 
 def simulator(base_config, i):
-    
-    
+
     config = deepcopy(base_config)
     config.sim.seed = i
     log.info(f"Starting seed {i}")
@@ -60,7 +59,7 @@ def simulator(base_config, i):
     duration = time.time() - start_time
     seed_str = str(i).zfill(4)
     log.info(f"Seed {seed_str} took {duration} to finish")
-    
+
     while True:
         try:
             with h5py.File(utils.expand_path(config.output_path), "a") as h5_file:
@@ -82,7 +81,7 @@ def simulator(base_config, i):
             dataverse_id=os.getenv("DATAVERSE_ID", ""),
             log=log,
         )
-        
+
 
 @hydra.main(config_path="configs/", config_name="radial_dam_break")
 def main(config: DictConfig):
@@ -98,19 +97,19 @@ def main(config: DictConfig):
 
     temp_path = os.getcwd()
     os.chdir(get_original_cwd())
-    
-    # Change back to the hydra working directory    
+
+    # Change back to the hydra working directory
     os.chdir(temp_path)
-    
+
     work_path = os.path.dirname(config.work_dir)
     output_path = os.path.join(work_path, config.data_dir, config.output_path)
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
-    config.output_path = os.path.join(output_path, config.output_path) + '.h5'
+    config.output_path = os.path.join(output_path, config.output_path) + ".h5"
 
     num_samples_init = 0
     num_samples_final = 10000
-    
+
     pool = mp.Pool(mp.cpu_count())
     seed = np.arange(num_samples_init, num_samples_final)
     seed = seed.tolist()

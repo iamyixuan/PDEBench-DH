@@ -14,7 +14,7 @@ class HDF5Dataset(Dataset):
         super().__init__()
         path = Path(dir_path)
         assert path.is_dir()
-        files_path = list(path.glob('*.h5'))  # all .h5 files' path
+        files_path = list(path.glob("*.h5"))  # all .h5 files' path
         assert len(files_path) > 0
 
         self.data_info = {}
@@ -25,7 +25,7 @@ class HDF5Dataset(Dataset):
 
         for files_path in files_path:
             with h5py.File(str(files_path.resolve())) as f:
-                config = f.attrs.get('config')
+                config = f.attrs.get("config")
                 for ds_name, ds in f.items():
                     self.names.append(ds_name)
                     b = ds.shape[0]
@@ -60,6 +60,7 @@ class HDF5Dataset(Dataset):
 
 # PATH_DATASETS = 'dummy_dataset'
 
+
 class HDF5DatasetLightning(LightningDataModule):
     def __init__(self, data_dir: str, batch_size: int = 64, transforms=None):
         super().__init__()
@@ -78,7 +79,7 @@ class HDF5DatasetLightning(LightningDataModule):
 
 
 if __name__ == "__main__":
-    dir_path = 'download_dataset'  # random_force_field--ns_sim--10.h5 in this directory
+    dir_path = "download_dataset"  # random_force_field--ns_sim--10.h5 in this directory
 
     # test pytorch dataset
     dataset = HDF5Dataset(dir_path=dir_path, transform=None)
@@ -86,8 +87,8 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
     data, config = next(iter(dataloader))
     for i, d in enumerate(data):
-        print(f'{names[i].upper()} batched data shape: ', d.size())
-    print('number of config files: ', len(config))
+        print(f"{names[i].upper()} batched data shape: ", d.size())
+    print("number of config files: ", len(config))
 
     # test pytorch lightning dataset
     lightning_dataset = HDF5DatasetLightning(dir_path, batch_size=64, transforms=None)
@@ -95,5 +96,5 @@ if __name__ == "__main__":
     lightning_dataloader = lightning_dataset.train_dataloader()
     data, config = next(iter(lightning_dataloader))
     for i, d in enumerate(data):
-        print(f'{names[i].upper()} batched data shape: ', d.size())
-    print('number of config files: ', len(config))
+        print(f"{names[i].upper()} batched data shape: ", d.size())
+    print("number of config files: ", len(config))

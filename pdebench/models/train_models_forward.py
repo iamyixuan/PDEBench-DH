@@ -240,7 +240,7 @@ def main(cfg: DictConfig):
             root_path=cfg.args.root_path,
             val_num=cfg.args.val_num,
             if_periodic_bc=cfg.args.if_periodic_bc,
-            aux_params=cfg.args.aux_params
+            aux_params=cfg.args.aux_params,
         )
 
 

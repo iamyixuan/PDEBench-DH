@@ -17,8 +17,9 @@ def main(config: DictConfig):
     Args:
         config: This function uses hydra configuration for all parameters.
     """
-    
+
     from src import sim_ns_incomp_2d
+
     sim_ns_incomp_2d.ns_sim(config=config, **config)
 
 

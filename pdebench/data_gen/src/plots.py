@@ -37,7 +37,7 @@ def plot_data(data, t, dim, channel, t_fraction, config, filename):
     plt.savefig(filename)
 
 
-def save_phi_plot(result, title, filepath, bbox_inches='tight', pad_inches=0):
+def save_phi_plot(result, title, filepath, bbox_inches="tight", pad_inches=0):
     """
     save one custom figure from an array
     """
@@ -47,25 +47,41 @@ def save_phi_plot(result, title, filepath, bbox_inches='tight', pad_inches=0):
     plt.close()
 
 
-def phi_plots(results, T_results, title, filepath, scale = 1, bbox_inches='tight', pad_inches=0):
+def phi_plots(
+    results, T_results, title, filepath, scale=1, bbox_inches="tight", pad_inches=0
+):
     """
     Save simulation custom figures, get images list
     """
     images = []
     upperfilepath = filepath
     for i, arr in enumerate(T_results):
-        filename = '{}.png'.format(title)
-        if upperfilepath == '':
+        filename = "{}.png".format(title)
+        if upperfilepath == "":
             filepath = filename
         else:
-            filepath = upperfilepath + '/{}'.format(filename)
+            filepath = upperfilepath + "/{}".format(filename)
         save_phi_plot(
-            scale * results[i], title, filepath, bbox_inches=bbox_inches, pad_inches=pad_inches)
+            scale * results[i],
+            title,
+            filepath,
+            bbox_inches=bbox_inches,
+            pad_inches=pad_inches,
+        )
         images.append(imageio.imread(filepath))
     return images
 
 
-def save_sim_figures(results, T_results, simulation_name, kinematic_value, filepath, scale = 1, bbox_inches='tight', pad_inches=0):
+def save_sim_figures(
+    results,
+    T_results,
+    simulation_name,
+    kinematic_value,
+    filepath,
+    scale=1,
+    bbox_inches="tight",
+    pad_inches=0,
+):
     """
     save figures, get images list
     """
@@ -73,14 +89,17 @@ def save_sim_figures(results, T_results, simulation_name, kinematic_value, filep
     upperfilepath = filepath
     for i, arr in enumerate(T_results):
         res = arr[0]
-        title = '{}_{}_t={}'.format(simulation_name, kinematic_value, round(T_results[i], 2))
-        filename = '{}.png'.format(title)
-        if upperfilepath == '':
+        title = "{}_{}_t={}".format(
+            simulation_name, kinematic_value, round(T_results[i], 2)
+        )
+        filename = "{}.png".format(title)
+        if upperfilepath == "":
             filepath = filename
         else:
-            filepath = upperfilepath + '/{}'.format(filename)
+            filepath = upperfilepath + "/{}".format(filename)
         save_phi_plot(
-            scale * res, title, filepath, bbox_inches=bbox_inches, pad_inches=pad_inches)
+            scale * res, title, filepath, bbox_inches=bbox_inches, pad_inches=pad_inches
+        )
         images.append(imageio.imread(filepath))
     return images
 
