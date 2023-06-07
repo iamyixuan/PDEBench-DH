@@ -602,11 +602,7 @@ def run_training(
         errors = [np.array(err.cpu()) for err in test_errs]
         print(errors)
         # pickle.dump(errors, open(model_name + ".pickle", "wb"))
-<<<<<<< HEAD
     return sum(val_loss), errors
-=======
-    return sum(val_loss), sum(errors)
->>>>>>> refs/remotes/origin/main
 
 
 if __name__ == "__main__":
