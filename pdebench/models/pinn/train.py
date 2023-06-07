@@ -599,10 +599,10 @@ def run_training(
 
         test_errs = metric_func(test_pred, test_gt)
 
-        # errors = [np.array(err.cpu()) for err in errs]
-        # print(errors)
+        errors = [np.array(err.cpu()) for err in test_errs]
+        print(errors)
         # pickle.dump(errors, open(model_name + ".pickle", "wb"))
-    return sum(val_loss), test_errs[0].cpu().detach().numpy()
+    return sum(val_loss), sum(errors)
 
 
 if __name__ == "__main__":
