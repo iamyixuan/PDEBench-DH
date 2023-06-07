@@ -566,6 +566,8 @@ def run_training(
         )
         # val_errs = metric_func(val_pred, val_gt)
         test_errs = metric_func(test_pred, test_gt)
+        errors = [np.array(err.cpu()) for err in test_errs]
+        print(errors)
     else:
         for val_batch_idx in range(-1, -val_num, -1):
             val_loss, test_pred, test_gt, model_name = _run_training(
