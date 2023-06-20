@@ -123,7 +123,7 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     data_split, _ = torch.utils.data.random_split(
         dataset,
         [ratio, len(dataset) - ratio],
-        generator=torch.Generator(device='cuda').manual_seed(42),
+        generator=torch.Generator(device='cpu').manual_seed(42),
     )
 
     data_gt = data_split[:]
@@ -524,7 +524,7 @@ def _run_training(
         test_gt, n_last_time_steps=20, n_components=n_components
     )
 
-    return val_loss, test_pred, test_gt, model_name
+    return val_loss, test_pred, test_gt,losshistory
 
 
 def run_training(
@@ -546,7 +546,7 @@ def run_training(
 ):
 
     if val_num == 1:  # single job
-        val_loss, test_pred, test_gt, model_name = _run_training(
+        val_loss, test_pred, test_gt, losshistory = _run_training(
             net_class,
             scenario,
             epochs,
@@ -570,7 +570,7 @@ def run_training(
         print(errors)
     else:
         for val_batch_idx in range(-1, -val_num, -1):
-            val_loss, test_pred, test_gt, model_name = _run_training(
+            val_loss, test_pred, test_gt, losshistory = _run_training(
                 scenario,
                 epochs,
                 learning_rate,
@@ -604,7 +604,7 @@ def run_training(
         errors = [np.array(err.cpu()) for err in test_errs]
         print(errors)
         # pickle.dump(errors, open(model_name + ".pickle", "wb"))
-    return sum(val_loss), errors
+    return sum(val_loss), errors, losshistory
 
 
 if __name__ == "__main__":
