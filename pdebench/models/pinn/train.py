@@ -5,6 +5,7 @@ import pickle
 import matplotlib.pyplot as plt
 import os, sys
 import torch
+import time
 
 from typing import Tuple
 
@@ -148,7 +149,7 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     # net = dde.nn.FNN([3] + [config['num_neurons']] * config['num_layers'] + [2], config['activation'], "Glorot normal")
     model = dde.Model(data, net)
 
-    return model, dataset
+    return model, dataset, net
 
 
 def setup_swe_2d(filename, config, seed) -> Tuple[dde.Model, PINNDataset2D]:
@@ -441,7 +442,7 @@ def _run_training(
         model, dataset = setup_swe_2d(filename=flnm, config=config, seed=seed)
         n_components = 1
     elif scenario == "diff-react":
-        model, dataset = setup_diffusion_reaction(
+        model, dataset, net = setup_diffusion_reaction(
             net_class, filename=flnm, config=config, seed=seed
         )
         n_components = 2
@@ -511,7 +512,11 @@ def _run_training(
 
     # select only n_components of output
     # dirty hack for swe2d where we predict more components than we have data on
+    start_time = time.time()
     test_pred = torch.tensor(model.predict(test_input.cpu())[:, :n_components])
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    duration_inference = elapsed_time / test_input.shape[0]
     # val_pred = torch.tensor(model.predict(val_input.cpu())[:, :n_components])
 
     test_pred = dataset.unravel_tensor(
@@ -524,7 +529,7 @@ def _run_training(
         test_gt, n_last_time_steps=20, n_components=n_components
     )
 
-    return val_loss, test_pred, test_gt,losshistory
+    return val_loss, test_pred, test_gt,losshistory, net, duration_inference
 
 
 def run_training(
@@ -546,7 +551,7 @@ def run_training(
 ):
 
     if val_num == 1:  # single job
-        val_loss, test_pred, test_gt, losshistory = _run_training(
+        val_loss, test_pred, test_gt, losshistory, model, duration_inference = _run_training(
             net_class,
             scenario,
             epochs,
@@ -566,11 +571,10 @@ def run_training(
         )
         # val_errs = metric_func(val_pred, val_gt)
         test_errs = metric_func(test_pred, test_gt)
-        errors = [np.array(err.cpu()) for err in test_errs]
-        print(errors)
+        errors = np.hstack([np.array(err.cpu()) for err in test_errs])
     else:
         for val_batch_idx in range(-1, -val_num, -1):
-            val_loss, test_pred, test_gt, losshistory = _run_training(
+            val_loss, test_pred, test_gt, losshistory, model, duration_inference = _run_training(
                 scenario,
                 epochs,
                 learning_rate,
@@ -601,10 +605,10 @@ def run_training(
 
         test_errs = metric_func(test_pred, test_gt)
 
-        errors = [np.array(err.cpu()) for err in test_errs]
-        print(errors)
+        errors = np.stack([np.array(err.cpu()) for err in test_errs])
+        # print(errors)
         # pickle.dump(errors, open(model_name + ".pickle", "wb"))
-    return sum(val_loss), errors, losshistory
+    return val_loss, errors, losshistory, model, duration_inference
 
 
 if __name__ == "__main__":
