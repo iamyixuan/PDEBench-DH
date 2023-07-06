@@ -117,7 +117,7 @@ def main(config: DictConfig):
     config.output_path = os.path.join(output_path, config.output_path) + ".h5"
 
     num_samples_init = 0
-    num_samples_final = 5  # reduce the number of samples to generate
+    num_samples_final = 1000  # reduce the number of samples to generate
 
     pool = mp.Pool(mp.cpu_count())
     seed = np.arange(num_samples_init, num_samples_final)
@@ -133,7 +133,6 @@ def main(config: DictConfig):
             dataverse_id=os.getenv("DATAVERSE_ID", ""),
             log=log,
         )
-
     return
 
 

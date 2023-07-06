@@ -103,7 +103,7 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     """
     args:
         net: neural network class.
-        filename: dataset filename.
+        filename: dataset filename. Modify to the complete data path.
         seed: random seed.
     """
     # TODO: read from dataset config file
@@ -438,6 +438,7 @@ def _run_training(
     seed,
     callbacks=None,
 ):
+    flnm = os.path.join(root_path, flnm)
     if scenario == "swe2d":
         model, dataset = setup_swe_2d(filename=flnm, config=config, seed=seed)
         n_components = 1
@@ -499,8 +500,11 @@ def _run_training(
     # )
 
     model.compile("adam", lr=learning_rate)
+
     losshistory, train_state = model.train(
-        iterations=epochs, display_every=model_update, callbacks=[callbacks]
+        iterations=epochs,
+        display_every=1,
+        callbacks=[callbacks]
     )
     train_loss = train_state.loss_train
     val_loss = train_state.loss_test
