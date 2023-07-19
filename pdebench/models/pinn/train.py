@@ -124,7 +124,7 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     data_split, _ = torch.utils.data.random_split(
         dataset,
         [ratio, len(dataset) - ratio],
-        generator=torch.Generator(device='cpu').manual_seed(42),
+        generator=torch.Generator(device="cpu").manual_seed(42),
     )
 
     data_gt = data_split[:]
@@ -144,7 +144,10 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     net = net_class(
         [3] + [config["num_neurons"]] * config["num_layers"] + [2],
         config["activation"],
-        "Glorot normal",
+        config["initialization"],
+        config["skip_co"],
+        config["dropout_rate"],
+        config["weight_decay"],
     )
     # net = dde.nn.FNN([3] + [config['num_neurons']] * config['num_layers'] + [2], config['activation'], "Glorot normal")
     model = dde.Model(data, net)
@@ -198,7 +201,7 @@ def setup_swe_2d(filename, config, seed) -> Tuple[dde.Model, PINNDataset2D]:
     net = dde.nn.FNN(
         [3] + [config["num_neurons"]] * config["num_layers"] + [3],
         config["activation"],
-        "Glorot normal",
+        config["initialization"],
     )
     model = dde.Model(data, net)
 
@@ -499,12 +502,10 @@ def _run_training(
     #     f"{model_name}.pt", save_better_only=True, period=5000
     # )
 
-    model.compile("adam", lr=learning_rate)
+    model.compile(config["optimizer"], lr=learning_rate)
 
     losshistory, train_state = model.train(
-        iterations=epochs,
-        display_every=1,
-        callbacks=[callbacks]
+        iterations=epochs, display_every=1, callbacks=[callbacks]
     )
     train_loss = train_state.loss_train
     val_loss = train_state.loss_test
@@ -533,7 +534,7 @@ def _run_training(
         test_gt, n_last_time_steps=20, n_components=n_components
     )
 
-    return val_loss, test_pred, test_gt,losshistory, net, duration_inference
+    return val_loss, test_pred, test_gt, losshistory, net, duration_inference
 
 
 def run_training(
@@ -555,7 +556,14 @@ def run_training(
 ):
 
     if val_num == 1:  # single job
-        val_loss, test_pred, test_gt, losshistory, model, duration_inference = _run_training(
+        (
+            val_loss,
+            test_pred,
+            test_gt,
+            losshistory,
+            model,
+            duration_inference,
+        ) = _run_training(
             net_class,
             scenario,
             epochs,
@@ -578,7 +586,14 @@ def run_training(
         errors = np.hstack([np.array(err.cpu()) for err in test_errs])
     else:
         for val_batch_idx in range(-1, -val_num, -1):
-            val_loss, test_pred, test_gt, losshistory, model, duration_inference = _run_training(
+            (
+                val_loss,
+                test_pred,
+                test_gt,
+                losshistory,
+                model,
+                duration_inference,
+            ) = _run_training(
                 scenario,
                 epochs,
                 learning_rate,
