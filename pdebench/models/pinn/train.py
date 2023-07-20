@@ -120,11 +120,13 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     ic_data_v = dde.icbc.PointSetBC(initial_input, initial_v, component=1)
 
     ratio = int(len(dataset) * 0.3)
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     data_split, _ = torch.utils.data.random_split(
         dataset,
         [ratio, len(dataset) - ratio],
-        generator=torch.Generator(device="cpu").manual_seed(42),
+        generator=torch.Generator(device=device).manual_seed(42),
     )
 
     data_gt = data_split[:]
@@ -180,10 +182,12 @@ def setup_swe_2d(filename, config, seed) -> Tuple[dde.Model, PINNDataset2D]:
 
     ratio = int(len(dataset) * 0.3)
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     data_split, _ = torch.utils.data.random_split(
         dataset,
         [ratio, len(dataset) - ratio],
-        generator=torch.Generator(device="cuda").manual_seed(42),
+        generator=torch.Generator(device=device).manual_seed(42),
     )
 
     data_gt = data_split[:]
