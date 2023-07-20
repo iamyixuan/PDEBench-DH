@@ -120,7 +120,7 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
     ic_data_v = dde.icbc.PointSetBC(initial_input, initial_v, component=1)
 
     ratio = int(len(dataset) * 0.3)
-    
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     data_split, _ = torch.utils.data.random_split(
@@ -143,13 +143,11 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
         num_initial=5000,
         num_test=500,  # enable number of test for validation purpose
     )
+
     net = net_class(
-        [3] + [config["num_neurons"]] * config["num_layers"] + [2],
-        config["activation"],
-        config["initialization"],
-        config["skip_co"],
-        config["dropout_rate"],
-        config["weight_decay"],
+        input_dim=3,
+        output_dim=2,
+        **config,
     )
     # net = dde.nn.FNN([3] + [config['num_neurons']] * config['num_layers'] + [2], config['activation'], "Glorot normal")
     model = dde.Model(data, net)
@@ -158,7 +156,6 @@ def setup_diffusion_reaction(net_class, filename, config, seed):
 
 
 def setup_swe_2d(filename, config, seed) -> Tuple[dde.Model, PINNDataset2D]:
-
     dataset = PINNDatasetRadialDambreak(filename, seed)
 
     # TODO: read from dataset config file
@@ -230,7 +227,6 @@ def setup_pde1D(
     if_periodic_bc=True,
     aux_params=[0.1],
 ):
-
     # TODO: read from dataset config file
     geom = dde.geometry.Interval(xL, xR)
     boundary_r = lambda x, on_boundary: _boundary_r(x, on_boundary, xL, xR)
@@ -331,7 +327,6 @@ def setup_CFD2D(
     if_periodic_bc=True,
     aux_params=[1.6667],
 ):
-
     # TODO: read from dataset config file
     geom = dde.geometry.Rectangle((-1, -1), (1, 1))
     timedomain = dde.geometry.TimeDomain(0.0, 1.0)
@@ -382,7 +377,6 @@ def setup_CFD3D(
     hidden_ch=40,
     aux_params=[1.6667],
 ):
-
     # TODO: read from dataset config file
     geom = dde.geometry.Cuboid((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
     timedomain = dde.geometry.TimeDomain(0.0, 1.0)
@@ -506,10 +500,15 @@ def _run_training(
     #     f"{model_name}.pt", save_better_only=True, period=5000
     # )
 
-    pde_weights = config['loss_weights']
+    pde_weights = config["loss_weights"]
     loss_weights = [pde_weights] * 2 + [1 - pde_weights] * 4
-    
-    model.compile(config["optimizer"], lr=learning_rate, loss_weights=loss_weights)
+
+    model.compile(
+        optimizer=config["optimizer"],
+        lr=learning_rate,
+        loss_weights=loss_weights,
+        decay=config["decay"],
+    )
 
     losshistory, train_state = model.train(
         iterations=epochs, display_every=1, callbacks=[callbacks]
@@ -563,7 +562,6 @@ def run_training(
     seed="0000",
     callbacks=None,
 ):
-
     if val_num == 1:  # single job
         (
             val_loss,
