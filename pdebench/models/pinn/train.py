@@ -500,13 +500,10 @@ def _run_training(
     #     f"{model_name}.pt", save_better_only=True, period=5000
     # )
 
-    pde_weights = config["loss_weights"]
-    loss_weights = [pde_weights] * 2 + [1 - pde_weights] * 4
-
     model.compile(
         optimizer=config["optimizer"],
         lr=learning_rate,
-        loss_weights=loss_weights,
+        loss_weights=config["loss_weights"],
         decay=config["decay"],
     )
 
@@ -540,8 +537,6 @@ def _run_training(
         test_gt, n_last_time_steps=20, n_components=n_components
     )
 
-    # divide the weights and get the original losses
-    val_loss /= loss_weights
     return val_loss, test_pred, test_gt, losshistory, net, duration_inference
 
 
